@@ -1,0 +1,63 @@
+Messenger application
+
+// Creating account
+we have one server and client app
+server will be running always
+if I run client app on my laptop server should ask my account is available or not
+if not it will ask my email address for creating an account
+then server sends one-time random number to my email for confirmation
+
+// inside the app
+after creations account client app show me menu
+
+at a showing time if we enter a nickname of user(we already establish connection) or group(we joined),
+then we start chatting there
+when you disconnect this client app all messages which have seen in groups and chats will be removed
+after exactly that time if someone send me a message it will be saved in server and if I come back again,
+server will send them yo me
+the same in groups
+
+when we are in some kind of groups or chat we have a command /quit
+then we will back to out menu
+
+menu:
+1 - search for people to talk to
+here we should search their nickname, server checks if nickname is available
+if yes, we can establish connection with that user
+if no, return there is no such user
+after connection we can send and get messages, pictures, files (and even I want to send small videos)
+if this user is available in server but not online at this time server should save all what I send
+and send to this account when it is online
+for disconnect this connection we have a command /remove user
+
+2 - search for groups
+also group nickname should be searched
+if available, ask from user if he want to join or not
+if not search another group until user enter a command about stop search ( /quit )
+after joining,
+we can see all messages in this group starting from that time when user joined
+after disconnected you cannot see all messages in this group (if they have seen)
+but new messages will be saved until you entering again to this group
+to quit (/quit)
+to leave (/leave group)
+
+3 - show my groups and friends and back to the menu section
+
+4 - create a group
+we should enter a valid name for our group
+and we can add users here by their nickname
+here other users can block their account,
+they do this we cannot add them in our group
+start chatting
+
+5 - Settings
+    -> do not add me to any group (no one can add me to their group)
+    -> remove my account
+
+6 - tips in this app
+    tips:
+    -> in app
+    -> in chat
+    -> in group
+
+7 - shutdown the application
