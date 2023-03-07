@@ -1,3 +1,6 @@
+package server;
+
+import server.ConnectionHandler;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -9,7 +12,10 @@ import java.util.concurrent.Executors;
 
 public class Server implements Runnable{
 
-    private ArrayList<ClientHandler> clientHandlers = new ArrayList<>();
+    // this map contains <userNickname, socket>
+    public static Map<String, Socket> clientHandlers = new HashMap<>();
+
+    // this map contains <userEmail, userNickname>
     public static Map<String, String> clientList = new HashMap<>();
     private ServerSocket serverSocket;
     private Socket socket;
@@ -31,9 +37,9 @@ public class Server implements Runnable{
             try {
                 socket = serverSocket.accept();
                 System.out.println("New client has joined!");
-                ClientHandler clientHandler = new ClientHandler(socket);
-                clientHandlers.add(clientHandler);
-                poll.execute(clientHandler);
+                ConnectionHandler connectionHandler = new ConnectionHandler(socket);
+                poll.execute(connectionHandler);
+                clientHandlers.put(connectionHandler.nickname, socket);
             } catch (Exception e) {
                 shutdown();
             }
