@@ -27,6 +27,9 @@ public class Client implements Runnable{
     private boolean done;
     private volatile boolean looping;
 
+    /**
+     * Constructor for Client object
+     */
     public Client(){
         try {
             socket = new Socket("127.0.0.1", 2421);
@@ -55,11 +58,9 @@ public class Client implements Runnable{
             thread.start();
 
             // start input messages from user
-            while(!done){
-                // call mainWindowCommands() method to get a command
-                // from main Window
-                mainWindowCommands();
-            }
+            // call mainWindowCommands() method to get a command
+            // from main Window
+            mainWindow();
 
 
         } catch (IOException e){
@@ -68,6 +69,20 @@ public class Client implements Runnable{
 
 
     }
+
+    /**
+     * to remove all white spaces from command,
+     * and to make them into the same case
+     * @param str
+     * @return
+     */
+    public String defaultCase(String str){
+        return str.replaceAll("\\s", "").toLowerCase();
+    }
+
+    /**
+     * to stop working everything
+     */
     public void shutdown(){
         done = true;
         try {
@@ -93,7 +108,7 @@ public class Client implements Runnable{
         public void run() {
             try {
                 String msg = in.readLine();
-                while (!msg.equals("/stop")){
+                while (!defaultCase(msg).equals("/stop")){
                     System.out.println(msg);
                     msg = in.readLine();
                 }
@@ -136,6 +151,9 @@ public class Client implements Runnable{
         }
     }
 
+    /**
+     * account creation or login stage
+     */
     public void account(){
         // creating a thread to print messages from Server
         Thread thread = new Thread(new OutputToConsole());
@@ -152,21 +170,16 @@ public class Client implements Runnable{
      * main window in application
      */
     public void mainWindow(){
-        System.out.println("1. Show main menu");
-        System.out.println("2. Write to friend");
-        System.out.println("3. Write to group");
-    }
+        while(!done) {
+            clear();
+            notifications();
+            System.out.println("1. Show main menu");
+            System.out.println("2. Write to friend");
+            System.out.println("3. Write to group");
+            System.out.println("4. Show notifications");
 
-    /**
-     * movements in main window
-     */
-    public void mainWindowCommands(){
-        mainWindow();
-
-        notifications();
-
-        while (!done){
             String msgMainWindow = sc.nextLine();
+
             if(msgMainWindow.equals("1")){
                 clear();
                 mainMenu();
@@ -179,12 +192,17 @@ public class Client implements Runnable{
                 clear();
                 //writeToGroup();
             }
-            else if(msgMainWindow.equals("0")){
+            else if(msgMainWindow.equals("4")){
                 clear();
                 showNotifications();
             }
             else {
                 System.out.println("Please select one of these menu number");
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e){
+                    // ignore
+                }
             }
         }
     }
@@ -194,10 +212,13 @@ public class Client implements Runnable{
      */
     public void notifications(){
         if(notifications.size() != 0){
-            System.out.println("You have " + notifications.size() + " notifications (0 to show)");
+            System.out.println("You have " + notifications.size() + " notifications");
         }
     }
 
+    /**
+     * to show all incoming notifications to user
+     */
     public void showNotifications(){
         int msgInNotification;
         do {
@@ -205,7 +226,7 @@ public class Client implements Runnable{
                 System.out.println("You don't have any notification");
                 msgInNotification = -1;
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e){
                     // ignore
                 }
@@ -236,17 +257,18 @@ public class Client implements Runnable{
      * to show main Window for user
      */
     public void mainMenu(){
-        System.out.println("1. Search for friends");
-        System.out.println("2. Search for groups");
-        System.out.println("3. Show my friends list");
-        System.out.println("4. Show my groups list");
-        System.out.println("5. Create a new group");
-        System.out.println("6. Settings");
-        System.out.println("7. Movements in this app");
-        System.out.println("0. Back to the main window");
-        try {
-            String msgInMenu;
-            do {
+        String msgInMenu = "";
+        do {
+            clear();
+            System.out.println("1. Search for friends");
+            System.out.println("2. Search for groups");
+            System.out.println("3. Show my friends list");
+            System.out.println("4. Show my groups list");
+            System.out.println("5. Create a new group");
+            System.out.println("6. Settings");
+            System.out.println("7. Movements in this app");
+            System.out.println("0. Back to the main window");
+            try {
                 msgInMenu = sc.nextLine();
                 if(msgInMenu.equals("1")){
                     clear();
@@ -273,11 +295,10 @@ public class Client implements Runnable{
                 else if(!msgInMenu.equals("0")){
                     System.out.println("Please select 0 to 7 from the above menu");
                 }
-            } while(!msgInMenu.equals("0"));
-            clear();
-        } catch (Exception e){
-            shutdown();
-        }
+            } catch (Exception e){
+                shutdown();
+            }
+        } while(!msgInMenu.equals("0"));
     }
 
     /**
@@ -348,6 +369,8 @@ public class Client implements Runnable{
                 // with this friend
                 createNewFile(friend);
                 System.out.println("New friend has been added successfully");
+                Thread.sleep(2000);
+                mainMenu();
             }
 
             // call main menu method
@@ -370,7 +393,6 @@ public class Client implements Runnable{
             // notification if someone add me to the friends list
             else if(command.equals("/addedYou")){
                 String name = in.readLine();
-                name = in.readLine();
                 friends.add(name);
                 createNewFile(name);
 
@@ -385,6 +407,8 @@ public class Client implements Runnable{
             }
         } catch (IOException e){
             shutdown();
+        } catch (InterruptedException e1){
+            // ignore
         }
     }
 
@@ -427,7 +451,7 @@ public class Client implements Runnable{
     public void startChat(){
         try {
             String message = in.readLine();
-            while(!message.equals("/quit")){
+            while(!defaultCase(message).equals("/quit")){
                 out.println(message);
                 message = in.readLine();
             }

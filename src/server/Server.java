@@ -20,6 +20,8 @@ public class Server implements Runnable{
     private ServerSocket serverSocket;
     private Socket socket;
 
+    // environment variable port number as const
+
     private ExecutorService poll;
 
     public Server(){
@@ -36,10 +38,11 @@ public class Server implements Runnable{
         while(true) {
             try {
                 socket = serverSocket.accept();
+                // Connections UID
                 System.out.println("New client has joined!");
+                // save Logs everytime with connection ID
                 ConnectionHandler connectionHandler = new ConnectionHandler(socket);
                 poll.execute(connectionHandler);
-                clientHandlers.put(connectionHandler.nickname, socket);
             } catch (Exception e) {
                 shutdown();
             }

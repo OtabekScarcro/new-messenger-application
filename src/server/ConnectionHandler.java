@@ -19,14 +19,11 @@ public class ConnectionHandler implements Runnable{
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private boolean done;
-    private volatile boolean quit;
     private String userEmail;
-    public String nickname;
+    private String nickname;
 
     public ConnectionHandler(Socket socket){
         this.socket = socket;
-        done = false;
     }
 
     @Override
@@ -36,7 +33,7 @@ public class ConnectionHandler implements Runnable{
             out = new PrintWriter(socket.getOutputStream(), true);
 
             // call account() method to take care of user's account
-            account();
+            accountStep();
 
             // infinite loop to get messages from client
             while(true){
@@ -44,43 +41,46 @@ public class ConnectionHandler implements Runnable{
                 if(msgFromClient.equals("/command")){
                     commands();
                 }
-
             }
-
-
         } catch (IOException e){
             shutdown();
+        } catch (NullPointerException e1){
+            // ignore
         }
     }
 
-    public void account(){
+    /**
+     * account creation or login stage
+     */
+    public void accountStep(){
         try {
             // ask from user whether user has an account or not
-            out.println("1. Sign in");
-            out.println("2. Log in");
-            String choose = in.readLine();
+            out.println("1. Sign up");
+            out.println("2. Sign in");
+            String choose = sanitize(in.readLine());
             while (!choose.equals("1") && !choose.equals("2")) {
                 out.println("Please select 1 or 2");
-                choose = in.readLine();
+                choose = sanitize(in.readLine());
             }
 
             // ask for user's email address
             out.println("Please enter your email: ");
-            String userEmail = in.readLine();
+            String userEmail = sanitize(in.readLine());
             while (!checkEmail(userEmail)) {
                 out.println("Please enter a valid email address: ");
-                userEmail = in.readLine();
+                userEmail = sanitize(in.readLine());
             }
 
             // sign in or log in with that email
             if (choose.equals("1")) {
-                signIn(userEmail);
+                signUp(userEmail);
                 out.println("A new account has been created successfully!");
-                out.println("");
+                out.println("/stop");
             }
             else {
-                logIn(userEmail);
+                signIn(userEmail);
                 out.println("Logged in successful!");
+                out.println("/stop");
             }
 
         } catch (IOException e){
@@ -91,13 +91,13 @@ public class ConnectionHandler implements Runnable{
     /**
      * to create an account
      */
-    public void signIn(String email){
+    public void signUp(String email){
         try {
             // check if this email is already existed
             while (Server.clientList.containsKey(email)) {
                 out.println("This email is already existed in Server");
                 out.println("Please try with another one");
-                email = in.readLine();
+                email = sanitize(in.readLine());
             }
 
             // confirm email by sending 6-digit code
@@ -111,6 +111,8 @@ public class ConnectionHandler implements Runnable{
                 out.println("Please choose another one: ");
                 nickname = in.readLine();
             }
+
+            Server.clientHandlers.put(this.nickname, this.socket);
 
             // save this email and nickname in Server
             Server.clientList.put(email, nickname);
@@ -126,13 +128,13 @@ public class ConnectionHandler implements Runnable{
     /**
      * to enter an existed account
      */
-    public void logIn(String email){
+    public void signIn(String email){
         try {
             // check whether this email is available or not
             while (!Server.clientList.containsKey(userEmail)) {
                 out.println("This email is not available in Server");
                 out.println("Please try with another email");
-                userEmail = in.readLine();
+                userEmail = sanitize(in.readLine());
             }
 
             // confirm this email by sending 6-digit code
@@ -233,7 +235,6 @@ public class ConnectionHandler implements Runnable{
      * shutdown() will stop the program
      */
     public void shutdown(){
-        done = true;
         try {
             if(!socket.isClosed()){
                 socket.close();
@@ -280,60 +281,82 @@ public class ConnectionHandler implements Runnable{
         // with the nickname which user entered
         ArrayList<String> resultsList = new ArrayList<>();
 
-        // indexing matches
-        int i = 0;
-
         // iterating the Map which contains all the users in Server
         // and printing matches
-        for(Map.Entry<String, Socket> entry : Server.clientHandlers.entrySet()){
-            if(entry.getKey().indexOf(nickname) != -1){
-                out.println((++i) + ". " + entry.getKey());
-                resultsList.add(entry.getKey());
+        for(String nick : Server.clientHandlers.keySet()){
+            if(nick.contains(nickname)){
+                resultsList.add(nick);
             }
+        }
+
+        for (int i=0;i<resultsList.size();i++){
+            int index = i+1;
+            out.println((index) + ". " + resultsList.get(i));
         }
 
         // asking to select one option
         out.println("Select right number (0 for none)");
         try {
-            int choose = in.read();
-            while(choose < 0 || choose > i){
-                out.println("Please select the right number!");
-                choose = in.read();
+            String choose = in.readLine();
+            int ch = Integer.parseInt(choose);
+            while(ch < 0 || ch > resultsList.size()){
+                out.println("Please select right number!");
+                choose = in.readLine();
+                ch = Integer.parseInt(choose);
             }
 
-            out.println("Do you want to chat with " + resultsList.get(choose-1));
-            out.println("1. Yes\n2. No");
-            int option = in.read();
-            while(option < 1 || option > 2){
-                out.println("Please select 1 or 2");
-            }
-
-            // notifying to stop looping in searching
-            out.println("/command");
-            out.println("/stopLooping");
-
-            // adding selected friend to user's friends list
-            if(option == 1){
-                out.println("/command");
-                out.println("/addFriend");
-                out.println(resultsList.get(choose-1));
-
-                // sending notification to this friend
-                PrintWriter outToFriend = new PrintWriter(Server.clientHandlers.get(resultsList.get(choose-1)).getOutputStream(), true);
-                outToFriend.println("/command");
-                outToFriend.println("/addedYou");
-                // my nickname
-                outToFriend.println(this.nickname);
-                // new friend's nickname
-                outToFriend.println(resultsList.get(choose-1));
-            }
-            // or canceling
-            else {
+            if(ch == 0){
                 out.println("/command");
                 out.println("/backToMenu");
             }
+            else {
+
+                out.println("Do you want to chat with " + resultsList.get(ch - 1));
+                out.println("1. Yes\n2. No");
+                String op = in.readLine();
+                int option = Integer.parseInt(op);
+                while (option != 1 && option != 2) {
+                    out.println("Please select 1 or 2");
+                    op = in.readLine();
+                    option = Integer.parseInt(op);
+                }
+
+                // notifying to stop looping in searching
+                out.println("/command");
+                out.println("/stopLooping");
+
+                // adding selected friend to user's friends list
+                if (option == 1) {
+                    out.println("/command");
+                    out.println("/addFriend");
+                    out.println(resultsList.get(ch - 1));
+
+                    // sending notification to this friend
+                    PrintWriter outToFriend = new PrintWriter(Server.clientHandlers.get(resultsList.get(ch - 1)).getOutputStream(), true);
+                    outToFriend.println("/command");
+                    outToFriend.println("/addedYou");
+                    // my nickname
+                    outToFriend.println(this.nickname);
+
+                }
+                // or canceling
+                else {
+                    out.println("/command");
+                    out.println("/backToMenu");
+                }
+            }
         } catch (IOException e){
 
+        }
+    }
+
+    public void checkOption(String num, int i){
+        String s = "";
+        for(int i1=0;i1<=i;i1++){
+            s += i1;
+        }
+        while(!s.contains(num)){
+            out.println("Please select right number!");
         }
     }
 
@@ -346,8 +369,9 @@ public class ConnectionHandler implements Runnable{
             BufferedReader inFriend = new BufferedReader(new InputStreamReader(friend.getInputStream()));
             String friendNickname = accounts.get(friend);
             String msgToClient = inFriend.readLine();
-            while(!msgToClient.equals("/quit")){
+            while(!sanitize(msgToClient).equals("/quit")){
                 out.println(friendNickname + ": " + msgToClient);
+                msgToClient = inFriend.readLine();
             }
             out.println("/command");
             out.println("/notOnline");
@@ -374,9 +398,10 @@ public class ConnectionHandler implements Runnable{
 
                 //
 
-                String msgToSend;
-                while(!(msgToSend = in.readLine()).equals("/quit")){
+                String msgToSend = in.readLine();
+                while(!sanitize(msgToSend).equals("/quit")){
                     outToFriend.println(msgToSend);
+                    msgToSend = in.readLine();
                 }
                 outToFriend.println("/command");
                 outToFriend.println("/notOnline");
@@ -384,6 +409,16 @@ public class ConnectionHandler implements Runnable{
                 shutdown();
             }
         }
+    }
+
+    /**
+     * to remove all white spaces from command,
+     * and to make them into the same case
+     * @param str
+     * @return
+     */
+    public String sanitize(String str){
+        return str.replaceAll("\\s", "").toLowerCase();
     }
 
 
